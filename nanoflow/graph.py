@@ -25,10 +25,6 @@ class Node(object):
         self.inputs = inputs
         self.name = name
 
-        if not fn:
-            # Use class method if present
-            fn = getattr(self.__class__, 'fn', None)
-
         self.fn = fn
 
         self.has_cached_result = False
