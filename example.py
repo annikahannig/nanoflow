@@ -40,7 +40,7 @@ def make_model():
 
     xx = Quad(x)
 
-    summed = Sum([x,xx,y, x_fact, y_fact])
+    summed = Sum([x, xx, y, x_fact, y_fact])
     halfed = Half(summed)
 
     return halfed
@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     res = graph.run(model, feed_dict={'x': 2, 'y': 3})
 
-    print("res: {}".format(res))
+    print("Result: {}".format(res))
 
     loop.close()
 
