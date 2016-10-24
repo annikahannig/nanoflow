@@ -1,22 +1,20 @@
 """
-Nanofibers Graph:
+Nanoflow Graph:
 
-Define a computational graph, run in a session.
+Define a computational graph.
 All operations will be run async. 
 
 Feed data into an node by providing a feed_dict
-to the session.
+to the run operation.
 """
 
 import asyncio
 
 
-
 class Node(object):
     """
-    Nanofiber nodes contain one computational
-    operation. (Like unpacking request data,
-    or serializing json).
+    Nanoflow nodes contain  computational operations.
+    These operations are exectued async
     """
 
     def __init__(self, inputs=[], name=None, fn=None):
@@ -33,24 +31,49 @@ class Node(object):
 
         self.fn = fn
 
-    def fetch_inputs(self):
-        inputs = [node_in.result() for node_in in self.inputs]  # Make async
+        self.has_cached_result = False
+        self.cached_result = None
+
+
+    async def fetch_inputs(self):
+        fetchers = [asyncio.ensure_future(node_in.result())
+                    for node_in in self.inputs]
+
+        inputs = await asyncio.gather(*fetchers)
         return inputs
 
 
-    def fetch_input(self, i):
-        return self.inputs[i].result()
+    async def fetch_input(self, i):
+        result = await self.inputs[i].result()
+        return result
 
 
-    def result(self):
+    async def result(self):
+        if self.has_cached_result:
+            return self.cached_result
+
         if self.fn:
-            inputs = self.fetch_inputs()
-            return self.fn(*inputs)
+            inputs = await self.fetch_inputs()
+
+            if asyncio.iscoroutinefunction(self.fn):
+                res = await self.fn(*inputs)
+            else:
+                res = self.fn(*inputs)
+
+            self.cached_result = res
+            self.has_cached_result = True
+
+            return res
+
         return None
 
 
-# Operation decorator
+
 def op(fn):
+    """
+    Operation decorator:
+    Wrap a (async) function in a Node
+    """
     def wrap(*args, **kwargs):
         kwargs['fn'] = fn
         return Node(*args, **kwargs)
@@ -58,25 +81,19 @@ def op(fn):
 
 
 class Placeholder(Node):
+    """
+    Placeholder keep data and will be initialized
+    from the feed_dict.
+
+    It's important to give your variables a name.
+    """
 
     def feed(self, value):
         self.value = value
 
-    def result(self):
+    async def result(self):
         return self.value
 
-
-class Sum(Node):
-    def result(self):
-        data = self.fetch_inputs()
-        return sum(data)
-
-
-
-class Quad(Node):
-    def result(self):
-        v = self.fetch_input(0)
-        return v*v
 
 
 def _find_named_node(node, name):
@@ -92,12 +109,36 @@ def _find_named_node(node, name):
     return None
 
 
+def _clear_caches(node):
+    if node == None:
+        return
+    node.has_cached_result = False
+    node.cached_result = None
 
-def run(output, feed_dict={}):
+    for node_in in node.inputs:
+        _clear_caches(node_in)
+
+
+
+def run_async(output, feed_dict={}):
     # Set placeholders
     for key, val in feed_dict.items():
         input_node = _find_named_node(output, key)
-        input_node.feed(val)
+        if input_node:
+            input_node.feed(val)
+
+    # Clear caches
+    _clear_caches(output)
+
+    future = asyncio.ensure_future(output.result())
+    return future
+
+
+def run(output, feed_dict={}):
+    """Run the graph on the event loop"""
+    loop = asyncio.get_event_loop()
 
     # Run graph
-    return output.result()
+    future = run_async(output, feed_dict)
+    result = loop.run_until_complete(future)
+    return result
