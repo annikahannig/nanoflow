@@ -10,6 +10,7 @@ to the run operation.
 
 import asyncio
 
+from .session import Session
 
 class Node(object):
     """
@@ -31,33 +32,35 @@ class Node(object):
         self.cached_result = None
 
 
-    async def fetch_inputs(self):
-        fetchers = [asyncio.ensure_future(node_in.result())
+    async def fetch_inputs(self, session):
+        fetchers = [asyncio.ensure_future(node_in.result(session))
                     for node_in in self.inputs]
 
         inputs = await asyncio.gather(*fetchers)
         return inputs
 
 
-    async def fetch_input(self, i):
-        result = await self.inputs[i].result()
+    async def fetch_input(self, session, i):
+        result = await self.inputs[i].result(session)
         return result
 
 
-    async def result(self):
-        if self.has_cached_result:
-            return self.cached_result
+    async def result(self, session):
+        if session.get(self, 'has_cached_result'):
+            return session.get(self, 'cached_result')
 
         if self.fn:
-            inputs = await self.fetch_inputs()
+            inputs = await self.fetch_inputs(session)
 
             if asyncio.iscoroutinefunction(self.fn):
                 res = await self.fn(*inputs)
             else:
                 res = self.fn(*inputs)
 
-            self.cached_result = res
-            self.has_cached_result = True
+            session.set(
+                self, True, key='has_cached_result'
+            ).set(
+                self, res, key='cached_result')
 
             return res
 
@@ -86,11 +89,12 @@ class Placeholder(Node):
     before executing the graph.
     """
 
-    def feed(self, value):
-        self.value = value
+    def feed(self, session, value):
+        """Store value in session"""
+        session.set(self, value)
 
-    async def result(self):
-        return self.value
+    async def result(self, session):
+        return session.get(self)
 
 
 
@@ -108,29 +112,21 @@ def _find_named_node(node, name):
     return None
 
 
-def _clear_caches(node):
-    """Reset all caches in graph"""
-    if node == None:
-        return
-    node.has_cached_result = False
-    node.cached_result = None
-
-    for node_in in node.inputs:
-        _clear_caches(node_in)
-
 
 
 def run_async(output, feed_dict={}):
+    # Create a new session for storing and
+    # retriving values for nodes.
+    session = Session()
+
     # Set placeholders
     for key, val in feed_dict.items():
         input_node = _find_named_node(output, key)
         if input_node:
-            input_node.feed(val)
+            input_node.feed(session, val)
 
-    # Clear caches
-    _clear_caches(output)
 
-    future = asyncio.ensure_future(output.result())
+    future = asyncio.ensure_future(output.result(session))
     return future
 
 
