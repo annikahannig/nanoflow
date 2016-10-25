@@ -53,9 +53,12 @@ if __name__ == '__main__':
 
     model = make_model()
 
-    res = graph.run(model, feed_dict={'x': 2, 'y': 3})
+    t1 = graph.run_async(model, feed_dict={'x': 2, 'y': 3})
+    t2 = graph.run_async(model, feed_dict={'x': 4, 'y': 1})
 
-    print("Result: {}".format(res))
+    results = loop.run_until_complete(asyncio.gather(t1, t2))
+
+    print("Results: {}".format(results))
 
     loop.close()
 
