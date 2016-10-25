@@ -93,6 +93,7 @@ class Placeholder(Node):
 
 
 def _find_named_node(node, name):
+    """Small helper to find a node by name"""
     if node.name == name:
         return node
 
@@ -106,6 +107,7 @@ def _find_named_node(node, name):
 
 
 def _clear_caches(node):
+    """Reset all caches in graph"""
     if node == None:
         return
     node.has_cached_result = False
