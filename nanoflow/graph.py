@@ -115,6 +115,8 @@ def _find_named_node(node, name):
 
 
 def run_async(output, feed_dict={}):
+    """Setup graph and return futrue for running on event loop"""
+
     # Create a new session for storing and
     # retriving values for nodes.
     session = Session()
