@@ -53,10 +53,16 @@ if __name__ == '__main__':
 
     model = make_model()
 
-    t1 = graph.run_async(model, feed_dict={'x': 2, 'y': 3})
-    t2 = graph.run_async(model, feed_dict={'x': 4, 'y': 1})
+    tasks = [
+        graph.run_async(model, feed_dict={'x': 2, 'y': 3}),
+        graph.run_async(model, feed_dict={'x': 4, 'y': 1}),
+        graph.run_async(model, feed_dict={'x': 2, 'y': 6}),
+        graph.run_async(model, feed_dict={'x': 5, 'y': 1}),
+        graph.run_async(model, feed_dict={'x': 6, 'y': 2}),
+        graph.run_async(model, feed_dict={'x': 6, 'y': 9}),
+    ]
 
-    results = loop.run_until_complete(asyncio.gather(t1, t2))
+    results = loop.run_until_complete(asyncio.gather(*tasks))
 
     print("Results: {}".format(results))
 
