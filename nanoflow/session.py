@@ -15,8 +15,9 @@ class Session(object):
         """Retrieve node data"""
         return self.data.get('{}_{}'.format(node.__hash__(), key), default)
 
-    def set(self, node, key, value):
+    def set(self, node, value, key=0):
         """Store node data"""
         self.data['{}_{}'.format(node.__hash__(), key)] = value
         return self
+
 
