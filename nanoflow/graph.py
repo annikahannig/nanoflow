@@ -81,7 +81,9 @@ class Placeholder(Node):
     Placeholder keep data and will be initialized
     from the feed_dict.
 
-    It's important to give your variables a name.
+    It's important to give your placholders a name, so
+    we can look them up and feed the from the feed_dict
+    before executing the graph.
     """
 
     def feed(self, value):
