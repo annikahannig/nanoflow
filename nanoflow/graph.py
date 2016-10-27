@@ -97,6 +97,16 @@ class Placeholder(Node):
         return session.get(self)
 
 
+class Constant(Node):
+    """
+    Return a constant
+    """
+    def __init__(self, value):
+        self.value = value;
+
+    async def result(self, session):
+        return self.value
+
 
 def _find_named_node(node, name):
     """Small helper to find a node by name"""
